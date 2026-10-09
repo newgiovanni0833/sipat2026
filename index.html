@@ -352,6 +352,7 @@
   a.botao { text-decoration: none; display: inline-block; }
   .admin h3 { font-family: var(--serif); font-weight: 400; font-size: 1.15rem; margin: 22px 0 4px; color: var(--folha-escura); }
   .totais { font-size: 1rem; margin: 4px 0 0; }
+  .nota a, .intro a { color: var(--folha); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -457,6 +458,7 @@ const DIAS = [
 ];            // dia, data, tema, peça e mensagem (sem gabarito)
 const MINIMO = 5;
 const LETRAS = ["A", "B", "C", "D"];
+const REGULAMENTO_URL = "https://newgiovanni0833.github.io/sipat2026/regulamento.html";
 const REDUZIR_MOVIMENTO = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const CHAVE_LOCAL = TESTE ? "sipat2026-email-teste" : "sipat2026-email";
 
@@ -531,6 +533,11 @@ async function chamar(funcao, ...args) {
     }
   }
 }
+function tempoTexto(seg) {
+  if (seg === null || seg === undefined) return "";
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return m ? `${m} min ${String(s).padStart(2, "0")} s` : `${s} s`;
+}
 function carregando(texto) {
   $("painelQuiz").innerHTML = `<div class="carregando"><span class="broto-girando" aria-hidden="true"></span>${esc(texto)}</div>`;
 }
@@ -562,6 +569,7 @@ function telaEntrada(erro) {
     </form>
     ${erro ? `<p class="aviso erro" role="alert">${esc(erro)}</p>` : ""}
     <button class="botao largo" type="submit" form="formEmail" id="btnEntrar">Entrar</button>
+    <p class="nota">Quem concluir as 3 etapas concorre a brindes. <a href="${REGULAMENTO_URL}" target="_blank" rel="noopener">Leia o regulamento</a>.</p>
     <p class="nota">Use o e-mail cadastrado na sua instituição. Ele serve apenas para registrar sua participação na SIPAT 2026.</p>`;
   $("formEmail").addEventListener("submit", ev => { ev.preventDefault(); entrar(); });
   if (!erro) $("email").focus({ preventScroll: true });
@@ -594,8 +602,11 @@ function telaDias(aviso) {
     if (s.concluido) {
       classe = "feito";
       status = s.desbloqueado
-        ? `<p class="dia-status">Peça encaixada · ${s.acertos} de 7 acertos</p>`
-        : `<p class="dia-status" style="color:var(--casca)">Participação registrada · ${s.acertos} de 7 acertos</p>`;
+        ? `<p class="dia-status">Peça encaixada · ${s.acertos} de 7 acertos${s.segundos !== null && s.segundos !== undefined ? " · " + tempoTexto(s.segundos) : ""}</p>`
+        : `<p class="dia-status" style="color:var(--casca)">Participação registrada · ${s.acertos} de 7 acertos${s.segundos !== null && s.segundos !== undefined ? " · " + tempoTexto(s.segundos) : ""}</p>`;
+    } else if (participante.encerrado) {
+      classe = "fechado";
+      acoes = `<button class="botao" disabled>Quiz encerrado</button>`;
     } else if (s.aberto && s.respondidas > 0) {
       status = `<p class="dia-status" style="color:var(--casca)">Você respondeu ${s.respondidas} de 7. Suas respostas estão guardadas.</p>`;
       acoes = `<button class="botao" data-continuar="${d.dia}">Continuar de onde parei</button>`;
@@ -623,8 +634,12 @@ function telaDias(aviso) {
       <button class="link" type="button" data-acao="trocar">Trocar e-mail</button>
     </div>
     ${aviso ? `<p class="aviso erro" role="alert">${esc(aviso)}</p>` : ""}
+    ${participante.encerrado ? `<p class="aviso">O quiz da SIPAT 2026 foi encerrado em ${esc(participante.encerrado)}. Obrigado por cultivar o cuidado com a gente! Os ganhadores serão divulgados pela CIPA.</p>` : ""}
     <h2>Escolha o dia</h2>
-    <p class="intro">Sete perguntas rápidas por dia, em uma única tentativa. Não há pressa nem pegadinha: é um convite para refletir sobre o cuidado.</p>
+    ${participante.concorre === false
+      ? `<p class="aviso">Como integrante da CIPA ou Amigo da CIPA, você pode responder normalmente, mas não concorre aos brindes.</p>`
+      : ""}
+    <p class="intro">Sete perguntas por dia, em uma única tentativa. ${participante.concorre === false ? "" : `Quem concluir as 3 etapas concorre a brindes: ganha quem acertar mais e, no empate, quem levar menos tempo. <a href="${REGULAMENTO_URL}" target="_blank" rel="noopener">Ver regulamento</a>.`}</p>
     <ol class="dias">${itens}</ol>
     ${TESTE ? `<p class="nota" style="margin-top:18px">No link de teste você pode apagar suas respostas e repetir o percurso. <button class="link" type="button" data-acao="zerar">Zerar meu teste</button></p>` : ""}`;
 }
@@ -635,7 +650,8 @@ function telaConfirmar(n) {
     <div class="quiz-topo"><button class="voltar" type="button" data-acao="dias">‹ Voltar aos dias</button></div>
     <p class="tema">Dia ${d.dia}: ${esc(d.tema)}</p>
     <h2 tabindex="-1" id="tituloConfirmar">Antes de começar</h2>
-    <p>Cada e-mail responde ao quiz deste dia <strong>uma única vez</strong>. Cada alternativa escolhida fica registrada na hora, então leia com calma.</p>
+    <p>Cada e-mail responde ao quiz deste dia <strong>uma única vez</strong>. Cada alternativa escolhida fica registrada na hora e não pode ser trocada.</p>
+    ${participante.concorre === false ? "" : `<p class="aviso"><strong>Vale brinde:</strong> o tempo deste dia começa a contar quando você tocar em “Começar agora” e para na 7ª resposta. Se fechar a página e voltar depois, o tempo continua correndo.</p>`}
     <p class="intro">Se a conexão cair ou você fechar a página, é só entrar de novo com o mesmo e-mail para continuar de onde parou.</p>
     <div class="dia-acoes">
       <button class="botao" type="button" data-iniciar="${d.dia}">Começar agora</button>
@@ -730,6 +746,7 @@ async function responder(i) {
       </button>`;
     $("btnProxima").focus({ preventScroll: true });
   } catch (e) {
+    if (/encerrado/i.test(e.message)) { participante.encerrado = participante.encerrado || "agora"; return telaDias(e.message); }
     botoes.forEach(b => { b.disabled = false; b.classList.remove("apagada"); });
     $("feedback").innerHTML = `<p class="aviso erro" role="alert">${esc(e.message)} Sua resposta ainda não foi registrada: escolha a alternativa de novo.</p>`;
   } finally { ocupado = false; }
@@ -747,8 +764,8 @@ function telaResultado(r) {
   const folhas = Array.from({ length: 7 }, (_, i) => `<span class="${i < r.acertos ? "cheia" : ""}"></span>`).join("");
   const titulo = r.desbloqueou ? d.mensagem.titulo : "Participação registrada";
   const corpo = r.desbloqueou
-    ? `<p>Você acertou <span class="numero">${r.acertos} de 7</span>.</p><p>${esc(d.mensagem.texto)}</p>`
-    : `<p>Você acertou <span class="numero">${r.acertos} de 7</span>. Desta vez a peça pedia ${MINIMO} acertos e não se encaixou, mas cada resposta deixou uma semente plantada.</p>
+    ? `<p>Você acertou <span class="numero">${r.acertos} de 7</span>${r.segundos !== null && r.segundos !== undefined ? ` em <span class="numero">${tempoTexto(r.segundos)}</span>` : ""}.</p><p>${esc(d.mensagem.texto)}</p>`
+    : `<p>Você acertou <span class="numero">${r.acertos} de 7</span>${r.segundos !== null && r.segundos !== undefined ? ` em <span class="numero">${tempoTexto(r.segundos)}</span>` : ""}. Desta vez a peça pedia ${MINIMO} acertos e não se encaixou, mas cada resposta deixou uma semente plantada.</p>
        <p>Obrigado por participar! ${s.dia < 3 ? "Amanhã tem mais um pedaço da árvore esperando por você." : ""}</p>`;
   $("painelQuiz").innerHTML = `
     <div class="resultado">
@@ -903,6 +920,19 @@ function tabelaDias(est) {
     <tbody>${est.dias.map(d => `<tr><td>${d.dia}. ${esc(d.tema)}</td><td class="num">${d.concluidos}</td><td class="num">${d.emAndamento}</td><td class="num">${d.desbloqueados}</td><td class="num">${String(d.media).replace(".", ",")}</td></tr>`).join("")}</tbody>
   </table></div>`;
 }
+function tabelaRanking(lista, premiados = 3) {
+  if (!lista || !lista.length) return `<p class="nota">Ninguém concluiu as 3 etapas ainda.</p>`;
+  return `<div class="rolagem"><table class="tabela">
+    <thead><tr><th class="num">#</th><th>Participante</th><th class="num">Acertos</th><th class="num">%</th><th class="num">Tempo total</th><th>Concluiu em</th></tr></thead>
+    <tbody>${lista.map(x => `<tr${x.posicao <= premiados ? ' style="background:var(--sol-claro)"' : ""}>
+      <td class="num"><strong>${x.posicao}º</strong></td>
+      <td>${esc(x.nome || x.email)}<br><span class="nota" style="margin:0">${esc(x.email)}${x.casa ? " · " + esc(x.casa) : ""}</span></td>
+      <td class="num">${x.acertos}/21</td>
+      <td class="num">${String(x.percentual).replace(".", ",")}%</td>
+      <td class="num">${esc(x.tempo)}</td>
+      <td>${esc(x.concluiuEm)}</td></tr>`).join("")}</tbody>
+  </table></div>`;
+}
 function linksCsv(lista) {
   return `<div class="downloads">${lista.map(a => `<a class="botao leve" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.nome)} (.csv · ${a.linhas})</a>`).join("")}</div>`;
 }
@@ -911,6 +941,19 @@ function telaAdmin(r) {
     <div class="admin">
       <h2>Participação</h2>
       <p class="intro">Atualizado em ${esc(r.geradoEm)}. <button class="link" type="button" data-acao="atualizarAdmin">Atualizar</button></p>
+
+      <h3>Situação do quiz</h3>
+      ${r.encerrado
+        ? `<p class="aviso">Quiz <strong>encerrado</strong> em ${esc(r.encerrado)}. Ninguém consegue mais iniciar nem responder etapas no link oficial.</p>
+           <button class="botao leve" type="button" data-acao="reabrirQuiz">Reabrir o quiz</button>`
+        : `<p class="totais">Quiz <strong>aberto</strong>. Encerramento automático em ${esc(r.encerramentoAutomatico || "")}. Ao encerrar, ninguém consegue mais iniciar nem responder etapas, e o ranking fica definido.</p>
+           <div class="downloads"><button class="botao" type="button" data-acao="encerrarQuiz">Encerrar quiz e definir ganhadores</button></div>`}
+
+      <h3>Ranking do brinde</h3>
+      <p class="totais"><strong>${r.ranking.elegiveis}</strong> ${r.ranking.elegiveis === 1 ? "pessoa concluiu" : "pessoas concluíram"} as 3 etapas e ${r.ranking.elegiveis === 1 ? "concorre" : "concorrem"}${r.encerrado ? " (resultado final)" : " (parcial)"}</p>
+      ${r.ranking.naoConcorrem ? `<p class="nota">${r.ranking.naoConcorrem} ${r.ranking.naoConcorrem === 1 ? "pessoa da CIPA ou Amigo da CIPA concluiu" : "pessoas da CIPA ou Amigos da CIPA concluíram"} as 3 etapas e não ${r.ranking.naoConcorrem === 1 ? "entra" : "entram"} na classificação.</p>` : ""}
+      ${tabelaRanking(r.ranking.top, r.premiados)}
+      <p class="nota">Ordem: maior número de acertos, depois menor tempo total, depois quem concluiu a última etapa primeiro. Os ${r.premiados || 3} primeiros ganham o brinde. Quem não concorre é marcado na coluna “vinculo_cipa” da aba Autorizados.</p>
 
       <h3>Dados oficiais</h3>
       <p class="totais"><strong>${r.reais.participantes}</strong> de ${r.autorizados} e-mails autorizados já entraram</p>
@@ -929,6 +972,7 @@ function telaAdmin(r) {
       <h3>Dados de teste</h3>
       <p class="totais"><strong>${r.testes.participantes}</strong> e-mails no link de teste</p>
       ${tabelaDias(r.testes)}
+      ${r.rankingTeste && r.rankingTeste.top.length ? tabelaRanking(r.rankingTeste.top) : ""}
       ${linksCsv(r.arquivosTeste)}
       <button class="botao leve" type="button" data-acao="limparTestes">Apagar todos os dados de teste</button>
       <p class="nota">Os downloads funcionam para quem está conectado à conta Google dona da planilha.</p>
@@ -957,6 +1001,18 @@ $("painelQuiz").addEventListener("click", async e => {
     catch (err) { telaDias(err.message); }
   }
   else if (acao === "atualizarAdmin") carregarAdmin();
+  else if (acao === "encerrarQuiz") {
+    if (!confirm("Encerrar o quiz agora? A partir deste momento ninguém consegue iniciar nem responder etapas no link oficial, e o ranking fica definido.")) return;
+    carregando("Encerrando o quiz e calculando o ranking…");
+    try { telaAdmin(await chamar("encerrarQuiz", chaveAdmin)); }
+    catch (err) { telaAdminLogin(err.message); }
+  }
+  else if (acao === "reabrirQuiz") {
+    if (!confirm("Reabrir o quiz? As pessoas voltam a conseguir responder e o ranking volta a ser parcial.")) return;
+    carregando("Reabrindo o quiz…");
+    try { telaAdmin(await chamar("reabrirQuiz", chaveAdmin)); }
+    catch (err) { telaAdminLogin(err.message); }
+  }
   else if (acao === "limparTestes") {
     if (!confirm("Apagar todos os registros das abas de teste? Os dados oficiais não são afetados.")) return;
     carregando("Apagando dados de teste…");
