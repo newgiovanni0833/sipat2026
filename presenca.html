@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -2400,25 +2401,39 @@ var qrcode = function() {
   .palco {
     position: relative; overflow: hidden;
     background: var(--creme-claro); border: 1px solid var(--linha); border-radius: 28px;
-    min-height: 460px; padding: 28px; display: grid; align-content: center; justify-items: center; gap: 18px; text-align: center;
+    min-height: 64vh; padding: 32px; display: grid; align-content: center; justify-items: center; gap: 22px; text-align: center;
   }
-  .palco .fundo-arvore { position: absolute; inset: auto -40px -60px auto; width: 360px; opacity: .14; pointer-events: none; }
-  .palco .rotulo { margin: 0; font-weight: 600; color: var(--casca); font-size: 1.05rem; min-height: 1.6em; }
+  /* Modo palco: o sorteio ocupa a tela inteira do projetor */
+  .palco.cheio {
+    position: fixed; inset: 0; z-index: 40; border-radius: 0; border: 0;
+    min-height: 100vh; padding: 5vh 5vw; gap: 3vh; background: var(--creme);
+  }
+  .palco.cheio .fundo-arvore { width: 46vw; inset: auto -6vw -10vh auto; opacity: .16; }
+  .palco.cheio .nome-sorteio { font-size: clamp(3rem, 11vw, 13rem); }
+  .palco.cheio .casa-sorteio { font-size: clamp(1.4rem, 3vw, 3rem); }
+  .palco.cheio .rotulo { font-size: clamp(1.1rem, 2vw, 2rem); }
+  .palco.cheio .opcoes { display: none; }
+  .palco .marca { display: none; margin: 0; font-family: var(--serif); color: var(--folha-escura); font-size: clamp(1.2rem, 2.4vw, 2.4rem); }
+  .palco.cheio .marca { display: block; position: absolute; top: 4vh; left: 5vw; }
+  .btn-voltar { display: none; position: absolute; top: 4vh; right: 4vw; }
+  .palco.cheio .btn-voltar { display: inline-block; }
+  .palco .fundo-arvore { position: absolute; inset: auto -40px -60px auto; width: 420px; opacity: .14; pointer-events: none; }
+  .palco .rotulo { margin: 0; font-weight: 600; color: var(--casca); font-size: 1.25rem; min-height: 1.6em; }
   .nome-sorteio {
     font-family: var(--serif); color: var(--folha-escura);
-    font-size: clamp(2.2rem, 6.2vw, 5.4rem); line-height: 1.05; min-height: 1.1em; margin: 0;
+    font-size: clamp(2.6rem, 7.5vw, 7.5rem); line-height: 1.05; min-height: 1.1em; margin: 0;
     font-variant-numeric: tabular-nums;
   }
   .nome-sorteio.girando { color: var(--tinta-suave); filter: blur(.4px); }
   .nome-sorteio.vencedor { color: var(--folha); animation: revelar .9s cubic-bezier(.2,.9,.3,1.25) both; }
   @keyframes revelar { 0% { transform: scale(.7); opacity: .2; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
-  .casa-sorteio { margin: 0; font-size: 1.3rem; color: var(--casca); font-weight: 600; min-height: 1.6em; }
+  .casa-sorteio { margin: 0; font-size: 1.7rem; color: var(--casca); font-weight: 600; min-height: 1.6em; }
   .barra { width: min(520px, 90%); height: 8px; border-radius: 99px; background: var(--broto-claro); overflow: hidden; }
   .barra i { display: block; height: 100%; width: 0; background: var(--folha); border-radius: 99px; }
   .opcoes { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; font-size: 0.95rem; color: var(--tinta-suave); }
   .opcoes label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   .opcoes input { width: 18px; height: 18px; accent-color: var(--folha); }
-  .botao.sortear { font-size: 1.25rem; padding: 16px 40px; }
+  .botao.sortear { font-size: 1.5rem; padding: 18px 56px; }
 
   .baixar { display: grid; gap: 6px; font-size: 0.9rem; }
   .baixar a { color: var(--folha); font-weight: 600; }
@@ -2678,6 +2693,8 @@ function montarTelao() {
       <div style="display:grid;gap:20px">
         <div class="palco" id="palco">
           <img class="fundo-arvore" src="${ARVORE}" alt="">
+          <p class="marca">${esc(painel.evento.nome)}</p>
+          <button class="botao leve btn-voltar" type="button" id="btnVoltar">Voltar ao painel</button>
           <p class="rotulo" id="rotulo">Pronto para sortear</p>
           <p class="nome-sorteio" id="nomeSorteio" aria-live="polite">🌳</p>
           <p class="casa-sorteio" id="casaSorteio"></p>
@@ -2704,6 +2721,7 @@ function montarTelao() {
     Promise.resolve(document.fullscreenElement ? document.exitFullscreen() : (el.requestFullscreen ? el.requestFullscreen() : null)).catch(() => {});
   });
   $("btnSortear").addEventListener("click", sortearAgora);
+  $("btnVoltar").addEventListener("click", () => $("palco").classList.remove("cheio"));
   $("btnLista").addEventListener("click", alternarLista);
   desenharQr();
   atualizarPainel();
@@ -2770,6 +2788,7 @@ async function sortearAgora() {
   sorteando = true;
   const btn = $("btnSortear"), nome = $("nomeSorteio"), casa = $("casaSorteio"), rotulo = $("rotulo"), barra = $("barra");
   btn.disabled = true;
+  $("palco").classList.add("cheio");
   casa.textContent = "";
   nome.className = "nome-sorteio girando";
   rotulo.textContent = "Sorteando…";
@@ -2823,6 +2842,8 @@ function desacelerar(nomes, vencedor, el, barra) {
     passo();
   });
 }
+
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("palco")) $("palco").classList.remove("cheio"); });
 
 /* ---------- Início ---------- */
 if (TESTE) $("faixaTeste").hidden = false;
